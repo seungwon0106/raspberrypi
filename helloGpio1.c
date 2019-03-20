@@ -32,6 +32,7 @@ int main (int argc, char ** argv)
 
 	for(i=0; i<loopCount; i++)
 	{
+		//점점 밝게
 		for(delayTime=0;delayTime<delayMax; delayTime++)
 		{			
 			//SETP 3. Pin Write
@@ -41,7 +42,7 @@ int main (int argc, char ** argv)
 			digitalWrite(gpioNo, LOW);
 			usleep(delayMax-delayTime);
 		}
-
+		//점점 어둡게
 		for(delayTime=0;delayTime<delayMax; delayTime++)
 		{			
 			//SETP 3. Pin Write
