@@ -27,9 +27,9 @@ int main(void)
 	struct myData person[10];
 	struct msqid_ds msqstat;  //남은 메시지큐의 메시지 갯수를 확인하기 위해
 	int msgid;
-	int personNum=0;
-	int total =0;
-	float ave =0;
+	int personNum = 0;
+	int total = 0;
+	float ave = 0;
 
 	//step0. ftok();
 
@@ -43,28 +43,21 @@ int main(void)
 
 	while (running)
 	{
-		printf("personNum++11 : %d\n", personNum);
 		//step2. msgrcv
-		if (msgrcv(msgid, &person[personNum], sizeof(person)-sizeof(long), 0, 0) == -1)
+		if (msgrcv(msgid, &person[personNum], sizeof(person) - sizeof(long), 0, 0) == -1)
 		{
 			fprintf(stderr, "Error:msgrcv failed : %d\n", errno);
 			exit(EXIT_FAILURE);
 		}
-		printf("personNum++22 : %d\n", personNum);
 
 		if (person[personNum].msgType == 2)
-		{
 			running = 0;
-		}
 		else
 		{
-			printf("personNum++33 : %d\n", personNum);
 			//printf("Receive Data Person[%d]\n", personNum);
 			total = person[personNum].kor + person[personNum].eng + person[personNum].mat;
 			ave = (total / 3);
-			printf("personnum : %d\n", personNum);
 			printf("Name :%s, total : %d, ave : %f\n", person[personNum].name, total, ave);
-			
 		}
 
 		if (msgctl(msgid, IPC_STAT, &msqstat) == -1)
@@ -72,12 +65,10 @@ int main(void)
 			perror("Fail:msgctl()");
 			exit(1);
 		}
-		//printf("remain message count:%d\n", msqstat.msg_qnum);
+		printf("remain message count:%d\n", msqstat.msg_qnum);
 		if (msqstat.msg_qnum > 0)
 			running = 1;
-
 		personNum++;
-		printf("personNum++ : %d\n", personNum);
 	}
 
 	//step3. msgctl IPC_RMID
