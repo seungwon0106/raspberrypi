@@ -10,15 +10,38 @@ static struct hrtimer hr_timer;
 
 enum hrtimer_restart my_hrtimer_callback(struct hrtimer *timer)
 {
-	pr_info("my_hrtimer_callback called (%ld).\n", jiffies);
-	return HRTIMER_NORESTART;
+	static int count = 0;
+	ktime_t currtime, interval;
+	unsigned long delay_in_ms = 10L;
+
+	
+	if (count ==10)
+	{
+		pr_info("my_hrtimer_callback called (%ld).\n", jiffies);
+		return HRTIMER_NORESTART;
+	}
+	else
+	{
+		count++;
+		pr_info("count=%d\n", count);
+
+		currtime = ktime_get();
+		interval = ktime_set(0, MS_TO_NS(delay_in_ms));
+		hrtimer_forward(timer, currtime, interval);
+		return HRTIMER_RESTART;
+	}
+
 }
+
+
+
+
 
 static int hrt_init_module(void)
 {
 	ktime_t ktime;
-	unsigned long delay_in_ms = 200L;
 
+	unsigned long delay_in_ms =10L;
 	pr_info("HR Timer module installing\n");
 
 	/*

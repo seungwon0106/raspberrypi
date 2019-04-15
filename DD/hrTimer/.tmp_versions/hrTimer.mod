@@ -1,3 +1,3 @@
-/home/pi/DD/hrTimer/hrTimer.ko
-/home/pi/DD/hrTimer/hrTimer.o
+/home/pi/raspberrypiEx/DD/hrTimer/hrTimer.ko
+/home/pi/raspberrypiEx/DD/hrTimer/hrTimer.o
 

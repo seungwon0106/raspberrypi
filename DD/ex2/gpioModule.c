@@ -96,7 +96,7 @@ static int __init initModule(void) //insmod
 	dev_t devno; //int형 32bit크기,devno 상위 8bit에 MAJOR할당하고 하위 16bit에 MINOR를 할당한다.
 		     // 상위 8bit 앞에 4bit크기의 공간이 있음 (주의)
 	int err;
-	//tatic void *map; //initModule에서 함수 종료 여부와 관계없이 무조건 항상 존재한다.
+	//static void *map; //initModule에서 함수 종료 여부와 관계없이 무조건 항상 존재한다.
 	int count;
 	printk("Called initModule()\n");
 
