@@ -10,6 +10,8 @@ int g=29;//GPIO21
 int dp=22;//GPIO6
 int i; 
 
+
+
 void allOne()	//test
 {
 	digitalWrite(a, LOW);
