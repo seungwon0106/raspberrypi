@@ -4,16 +4,13 @@
 #include <unistd.h>
 #include <signal.h>
 #include <stdlib.h>
+#include "myswitch.h"
 
 void signal_handler(int signum)
 {
-	static int count;
-	printf("user app: signal is catched\n");
-	if (signum == SIGIO)
-	{
-		printf("count:%d\n", count);
-	}
-	count++;
+	if(signum==SIGUSR1)				printf("SIGUSR1\n");
+	else if (signum == SIGUSR2)		printf("SIGUSR2\n");
+	
 }
 
 
@@ -25,25 +22,30 @@ int main(int argc, char** argv)
 	int count;
 	memset(buf, 0, BUFSIZ);
 
-	signal(SIGIO, signal_handler);
+	signal(SIGUSR1, signal_handler);
+	signal(SIGUSR2, signal_handler);
 
-	printf("argv[1]:%s\n", argv[1]);
-	fd = open("/dev/gpioled", O_RDWR);
+	sprintf(buf, "/dev/%s", GPIO_DEVICE);
+	/*printf("test1\n");
+	fflush(stdout);*/
+
+	fd = open(buf, O_RDWR);
 	if (fd < 0)
 	{
 		printf("Error open()\n");
+		printf("sudo chmod 666 /dev/%s'\n", GPIO_DEVICE);
 		return -1;
 	}
 
-	sprintf(buf, "%s:%d", argv[1], getpid());
+	/*printf("test2\n");
+	fflush(stdout);*/
+
+	sprintf(buf, "%d", getpid());
 	count = write(fd, buf, strlen(buf));
 	if (count < 0)
 	{
 		printf("Error write()\n");
 	}
-
-	//count=read(fd,buf,10);
-	//printf("Read data:%s\n",buf);
 
 	while (1);
 	close(fd);

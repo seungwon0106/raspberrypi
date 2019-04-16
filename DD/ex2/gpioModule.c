@@ -51,7 +51,7 @@ static struct file_operations gpio_fops={
 static int gpio_open(struct inode *inod, struct file *fil)
 {
 	try_module_get(THIS_MODULE); //현재 장치를 몇개의 프로세스가 사용하고 있는지를 알려주는 함수-> 프로세스가 많아질수록 count수가 증가한다. 
-				     //count 값이 0이되어야만 rmmod 명령어 사용할 수 있음 -> 만약 되지 않는다면 reboot실행해야한다..
+								 //count 값이 0이되어야만 rmmod 명령어 사용할 수 있음 -> 만약 되지 않는다면 reboot실행해야한다..
 	printk(KERN_INFO "GPIO Device opened\n");
 	return 0;
 
@@ -71,9 +71,9 @@ static ssize_t gpio_read(struct file *inode, char *buff, size_t len, loff_t *off
 	if(gpio_get_value(GPIO_LED)) //GPIO의 현재 상태값을 gpio_get_value()를 통해 알 수 있다.
 		msg[0]='1';
 	else 
-		msg[1]='0';
+		msg[0]='0';
 	strcat(msg, " from Kernel");
-	//usr는 커널에 진입할 수 없다. 따라서 msg를 못접근하기 때문에 커널이 msg를 유저모드에 진입해서 copy하도록 한다ㅏ.
+	//usr는 커널에 진입할 수 없다. 따라서 msg를 못접근하기 때문에 커널이 msg를 유저모드에 진입해서 copy하도록 한다.
 	count=copy_to_user(buff, msg, strlen(msg)+1);
 
 	printk(KERN_INFO "GPIO Device read:%s\n",msg);
@@ -94,7 +94,7 @@ static ssize_t gpio_write(struct file *inode, const char *buff, size_t len, loff
 static int __init initModule(void) //insmod
 {
 	dev_t devno; //int형 32bit크기,devno 상위 8bit에 MAJOR할당하고 하위 16bit에 MINOR를 할당한다.
-		     // 상위 8bit 앞에 4bit크기의 공간이 있음 (주의)
+				 // 상위 8bit 앞에 4bit크기의 공간이 있음 (주의)
 	int err;
 	//static void *map; //initModule에서 함수 종료 여부와 관계없이 무조건 항상 존재한다.
 	int count;

@@ -34,9 +34,6 @@ enum hrtimer_restart my_hrtimer_callback(struct hrtimer *timer)
 }
 
 
-
-
-
 static int hrt_init_module(void)
 {
 	ktime_t ktime;

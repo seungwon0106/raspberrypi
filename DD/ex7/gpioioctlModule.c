@@ -11,13 +11,10 @@
 #include <linux/gpio.h>		//request_gpio(), gpio_set_value()
 				//gpio_get_value(), gpio_free()
 #include <linux/interrupt.h>	//gpio_to_irq(), request_irq(), free_irq()
+#include <linux/timer.h>	//init_timer(), add_timer(), del_timer()
 #include <linux/signal.h>	//signal을 사용
 #include <linux/sched/signal.h>	//siginfo 구조체를 사용하기 위해
-#include <linux/hrtimer.h>	//high-resolution timer
-#include <linux/ktime.h>
 #include "myioctl.h"
-
-
 
 #define GPIO_MAJOR	200
 #define GPIO_MINOR	0
@@ -26,61 +23,82 @@
 #define GPIO_SW		17
 #define BLK_SIZE	100
 
-
 //#define DEBUG
 
 struct cdev gpio_cdev;
+struct class *class;
+struct device *dev;
 volatile unsigned int *gpio;
 static char msg[BLK_SIZE] = { 0 };
 static int switch_irq;
+static struct timer_list timer; 	//타이머처리를 위한 구조체
 static struct task_struct *task; 	//태스크를 위한 구조체
 pid_t pid;
 char pid_valid;
-static struct hrtimer hr_timer;
-int flag = 0;
 
 static int gpio_open(struct inode *, struct file *);
 static int gpio_close(struct inode *, struct file *);
 static ssize_t gpio_read(struct file *, char *buff, size_t, loff_t *);
 static ssize_t gpio_write(struct file *, const char *, size_t, loff_t *);
-long gpio_ioctl(struct file *, unsigned int, unsigned long);
+long  gpio_ioctl(struct file *, unsigned int, unsigned long);
 
+
+long  gpio_ioctl_wr(struct file *fil, unsigned int cmd, unsigned long arg)
+{
+	switch (cmd)
+	{
+
+	case CMD1:
+		printk(KERN_INFO "CMD1:%ld\n", arg);
+		break;
+
+	case CMD2:
+		printk(KERN_INFO "CMD2:%ld\n", arg);
+		break;
+
+	case CMD3:
+		printk(KERN_INFO "CMD3:%ld\n", arg);
+		break;
+
+	default:
+		printk(KERN_INFO "default:%ld\n", arg);
+		break;
+	}
+	return 0;
+}
 
 static struct file_operations gpio_fops = {
-	.owner			 = THIS_MODULE,
-	.read 		         = gpio_read,
-	.write 			 = gpio_write,
-	.unlocked_ioctl 	 = gpio_ioctl, 
-	.open			 = gpio_open,
-	.release 		 = gpio_close,
+	.owner = THIS_MODULE,
+	.read = gpio_read,
+	.write = gpio_write,
+	.unlocked_ioctl = gpio_ioctl_wr,
+	.open = gpio_open,
+	.release = gpio_close,
 };
 
-enum hrtimer_restart myTimer_callback(struct hrtimer *timer)
+
+static void timer_func(unsigned long data)
 {
-	printk(KERN_INFO "myTimer_callback\n");
-	flag = 0;
-	return HRTIMER_NORESTART;
+	gpio_set_value(GPIO_LED, data);
+	if (data)
+		timer.data = 0L;
+	else
+		timer.data = 1L;
+	timer.expires = jiffies + (1 * HZ);
+	add_timer(&timer);
 }
 
 static irqreturn_t isr_func(int irq, void *data)
 {
 	//IRQ발생 & LED가 OFF일때 
 	static int count;
-	ktime_t ktime;
-	unsigned long expireTime = 5000000L; //unit:ns
+	static int flag = 0;
 
 	static struct siginfo sinfo;
-	if (flag == 0)
+
+	if (!flag)
 	{
 		flag = 1;
-		//kitme_set(설정초,설정나노초);
-		ktime = ktime_set(0, expireTime);
-		//hrtimer_init(타이머구조체 주소값, 등록할 타이머값,상대시간으로설정)
-		hrtimer_init(&hr_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-		hr_timer.function = &myTimer_callback;
-		printk(KERN_INFO "startTime\n");
-		hrtimer_start(&hr_timer, ktime, HRTIMER_MODE_REL);
-
 		if ((irq == switch_irq) && !gpio_get_value(GPIO_LED))
 		{
 			gpio_set_value(GPIO_LED, 1);
@@ -99,14 +117,18 @@ static irqreturn_t isr_func(int irq, void *data)
 			{
 				printk(KERN_INFO "Error: USER PID\n");
 			}
+
 		}
 		else //IRQ발생 & LED ON일때
 			gpio_set_value(GPIO_LED, 0);
+
+		printk(KERN_INFO " Called isr_func():%d\n", count);
+		count++;
 	}
-
-	printk(KERN_INFO " Called isr_func():%d\n", count);
-	count++;
-
+	else
+	{
+		flag = 0;
+	}
 	return IRQ_HANDLED;
 }
 
@@ -167,6 +189,18 @@ static ssize_t gpio_write(struct file *fil, const char *buff, size_t len, loff_t
 	cmd[1] = '0';
 	printk(KERN_INFO "cmd:%s, pid:%s\n", cmd, pidstr);
 
+	if (!strcmp(cmd, "0"))
+	{
+		del_timer_sync(&timer);
+	}
+	else
+	{
+		init_timer(&timer);
+		timer.function = timer_func;
+		timer.data = 1L;	//timer_func으로 전달하는 인자값
+		timer.expires = jiffies + (1 * HZ); //1초 뒤에 타이머 만료
+		add_timer(&timer);
+	}
 	if (!strcmp(cmd, "end"))
 	{
 		pid_valid = 0;
@@ -198,29 +232,6 @@ static ssize_t gpio_write(struct file *fil, const char *buff, size_t len, loff_t
 }
 
 
-static long gpio_ioctl(struct file *fil, unsigned int cmd, unsigned long arg)
-{
-	switch(cmd)
-	{
-		case CMD1 :
-			printk(KERN_INFO "CMD1:%ld\n",arg);
-			break;
-
-		case CMD2 :
-			printk(KERN_INFO "CMD2:%ld\n", arg);
-			break;
-
-		default:
-			printk(KERN_INFO "default:%ld\n", arg);
-			break;
-	
-	}
-
-	return (arg+10);
-
-}
-
-
 static int __init initModule(void)
 {
 	dev_t devno;
@@ -247,16 +258,30 @@ static int __init initModule(void)
 	}
 
 	//class를 생성한다.
-	class=class_create(THIS_MODULE, GPIO_DEVICE);
-	if(IS_ERR(class))
+	class = class_create(THIS_MODULE, GPIO_DEVICE);
+	if (IS_ERR(class))
 	{
 		err = PTR_ERR(class);
-		printk(KERN_INFO"class_create error %d\n", err);
+		printk(KERN_INFO "class_create error %d\n", err);
 
-
-
-	
+		cdev_del(&gpio_cdev);
+		unregister_chrdev_region(devno, 1);
+		return err;
 	}
+
+	//노드를 자동으로 만들어준다.
+	dev = device_create(class, NULL, devno, NULL, GPIO_DEVICE);
+	if (IS_ERR(dev))
+	{
+		err = PTR_ERR(dev);
+		printk(KERN_INFO "device create error %d\n", err);
+		class_destroy(class);
+		cdev_del(&gpio_cdev);
+		unregister_chrdev_region(devno, 1);
+		return err;
+	}
+
+
 
 	//printk(KERN_INFO "'sudo mknod /dev/%s c %d 0'\n", GPIO_DEVICE, GPIO_MAJOR);
 	//printk(KERN_INFO "'sudo chmod 666 /dev/%s'\n", GPIO_DEVICE);
@@ -291,17 +316,12 @@ static int __init initModule(void)
 
 static void __exit cleanupModule(void)
 {
-	int ret;
-
 	dev_t devno = MKDEV(GPIO_MAJOR, GPIO_MINOR);
+	del_timer_sync(&timer);
 
-	ret = hrtimer_cancel(&hr_timer);
-	if (ret)
-		printk(KERN_INFO "myTimer was still in use\n");
-
-	printk(KERN_INFO "myTimer is uninstall\n");
-
-
+	// 0. 생성했던 노드를 제거한다.
+	device_destroy(class, devno);
+	class_destroy(class);
 
 	// 1.문자 디바이스의 등록을 해제한다.
 	unregister_chrdev_region(devno, 1);
